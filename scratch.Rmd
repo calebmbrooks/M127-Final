@@ -1,0 +1,171 @@
+---
+title: "noodle"
+author: "Caleb Brooks"
+date: "5/5/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library(tidyverse)
+library(devtools)
+library(sm)
+library(rgl)
+library(httr)
+library(xtable)
+install_github("calebmbrooks/Rspotify")
+library(Rspotify)
+options(xtable.floating = FALSE) 
+options(xtable.timestamp = "")
+```
+
+
+```{r eval = F}
+billboardId <- "6UeSakyzhiEt4NB3UAd6NQ"
+token <- readRDS("cbKey.rds")
+
+top100 <- getPlaylistSongs("billboard.com", billboardId, token = token)
+
+top100 %>% 
+  group_by(artist) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count))
+
+allTimeId <- "2YRe7HRKNRvXdJBp9nXFza"
+topAllTime <- getPlaylistSongs("1221028518", allTimeId, token = token)
+topAllTime2 <- getPlaylistSongs("1221028518", allTimeId, token = token, offset = 100)
+
+for (i in 1:5){
+  topAllTime <- rbind(topAllTime, getPlaylistSongs("1221028518", allTimeId, token = token, offset = (i*100)))
+}
+
+topAllTime[1:100,] %>% 
+  group_by(artist) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n))
+
+topAllTimeFeatures <- topAllTime[1:100,]$id %>% 
+  sapply(getFeatures, token = token) %>% 
+  data.frame() %>% 
+  t() %>% 
+  data.frame()
+
+for(i in 1:4){
+  new <- topAllTime[(i*100+1):((i+1)*100),]$id %>% 
+    sapply(getFeatures, token = token) %>% 
+    data.frame() %>% 
+    t() %>% 
+    data.frame()
+  topAllTimeFeatures <- rbind(topAllTimeFeatures,new)
+  
+}
+
+topAllTimeFeatures$id <- as.character(topAllTimeFeatures$id)
+topAllTimeFeatures$uri <- as.character(topAllTimeFeatures$uri)
+topAllTimeFeatures$danceability <- as.double(topAllTimeFeatures$danceability)
+topAllTimeFeatures$energy <- as.double(topAllTimeFeatures$energy)
+topAllTimeFeatures$loudness <- as.double(topAllTimeFeatures$loudness)
+topAllTimeFeatures$speechiness <- as.double(topAllTimeFeatures$speechiness)
+topAllTimeFeatures$acousticness <- as.double(topAllTimeFeatures$acousticness)
+topAllTimeFeatures$instrumentalness <- as.double(topAllTimeFeatures$instrumentalness)
+topAllTimeFeatures$liveness <- as.double(topAllTimeFeatures$liveness)
+topAllTimeFeatures$valence <- as.double(topAllTimeFeatures$valence)
+topAllTimeFeatures$tempo <- as.double(topAllTimeFeatures$tempo)
+topAllTimeFeatures$energy <- as.double(topAllTimeFeatures$energy)
+topAllTimeFeatures$key <- as.integer(topAllTimeFeatures$key)
+topAllTimeFeatures$mode <- as.integer(topAllTimeFeatures$mode)
+topAllTimeFeatures$duration_ms <- as.integer(topAllTimeFeatures$duration_ms)
+topAllTimeFeatures$time_signature <- as.integer(topAllTimeFeatures$time_signature)
+topAllTimeFeatures$key <- as.integer(topAllTimeFeatures$key)
+
+
+head(topAllTimeFeatures)
+
+cvs <- c(9,10,12,14,15,16,17,18)
+
+topAllTime <- topAllTime %>% 
+  inner_join(topAllTimeFeatures, by = "id")
+
+
+topAllTime <- topAllTime %>% 
+  mutate(rank = 1:nrow(topAllTime), rank_desc = (((nrow(topAllTime)+1) - 1:nrow(topAllTime))))
+
+topAllTime <- topAllTime %>% 
+  mutate(rank_desc_sq = rank_desc^2)
+
+saveRDS(topAllTime, "data/topAllTime.rds")
+```
+
+```{r eval = F}
+
+
+
+
+
+getArtistinfo(test, token = token)
+
+
+artists <- topAllTime$artistID %>% 
+  getArtist() %>% 
+  unlist() %>% 
+  data.frame()
+
+
+
+```
+
+```{r}
+topAllTime <- readRDS("data/topAllTime.rds")
+probs <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+quantiles <- quantile(topAllTime$duration_ms, prob=probs)
+
+topAllTime %>% 
+  mutate(duration_s = duration_ms/1000) %>% 
+  ggplot(aes(x = duration_s))+
+  geom_density(color = "Blue", aes(y = ..count..))+
+  labs(title = "Distribution of song length", x = "Duration in seconds", y = "Density")+
+  theme_minimal()
+  
+
+t1 <- topAllTime %>%
+  group_by(artist) %>% 
+  summarise(numberOfSongs = n(), 
+            averagePosition = mean(rank), 
+            sumReverseRank = sum(rank_desc), 
+            sumReverseRankSq = sum(rank_desc_sq),
+            meanPoston = (mean(rank)/(n()^2))) %>% 
+  arrange(desc(sumReverseRankSq)) %>% 
+  head(n = 20)
+
+topAllTime %>%
+  group_by(artist) %>%
+  summarise(avg_pos = (mean(rank)/(n()^2))) %>% 
+  arrange(avg_pos)
+
+t2 <- topAllTime %>% 
+  group_by(factor(time_signature)) %>% 
+  summarise(numTracks = n())
+
+topAllTime %>% 
+  filter(time_signature == 5)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

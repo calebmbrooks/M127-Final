@@ -1,0 +1,125 @@
+---
+title: "Tables"
+author: "Caleb Brooks"
+date: "5/10/2018"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document: default
+---
+
+
+```{r}
+library(tidyverse)
+library(devtools)
+library(sm)
+library(rgl)
+library(httr)
+library(xtable)
+install_github("calebmbrooks/Rspotify")
+library(Rspotify)
+```
+
+```{r}
+topAllTime <- readRDS("data/topAllTime.rds")
+probs <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+quantiles <- quantile(topAllTime$duration_ms, prob=probs)
+
+topAllTime %>% 
+  mutate(duration_s = duration_ms/1000) %>% 
+  ggplot(aes(x = duration_s))+
+  geom_density(color = "Blue", aes(y = ..count..))+
+  labs(title = "Distribution of song length", x = "Duration in seconds", y = "Density")+
+  theme_minimal()
+  
+
+t1 <- topAllTime %>%
+  group_by(artist) %>% 
+  summarise(numberOfSongs = n(), 
+            meanRank = mean(rank), 
+            sumReverseRank = sum(rank_desc), 
+            sumReverseRankSq = sum(rank_desc_sq)) %>% 
+  arrange(desc(sumReverseRankSq)) %>% 
+  head(n = 20)
+
+topAllTime %>%
+  group_by(artist) %>%
+  summarise(avg_pos = (mean(rank)/(n()^2))) %>% 
+  arrange(avg_pos)
+
+t2 <- topAllTime %>% 
+  group_by(factor(time_signature)) %>% 
+  summarise(numTracks = n())
+
+topAllTime %>% 
+  filter(time_signature == 5)
+
+topAllTime %>% 
+  filter(time_signature == 3)
+```
+
+```{r echo=FALSE, results='asis'}
+library(xtable)
+options(xtable.comment = FALSE)
+tab <- xtable(t1, floating=FALSE)
+print(tab)
+```
+
+```{r echo=FALSE, results='asis'}
+library(xtable)
+options(xtable.comment = FALSE)
+tab <- xtable(t2, floating=FALSE)
+print(tab)
+```
+
+
+```{r}
+topAllTime %>%  
+  ggplot(aes(x = tempo))+
+  geom_density(color = "Blue", aes(y = ..count..))+
+  labs(title = "Distribution of song tempo", x = "Tempo (BPM)", y = "Density (song count)")+
+  theme_minimal()+
+  geom_vline(xintercept = c(100, 123, 173), linetype = "dotted")
+```
+
+```{r}
+topAllTime %>%
+  ggplot(aes(x = energy))+
+  geom_density()+
+  labs(title = "Distribution of song energy", x = "Spotify's energy measure", y = "Density (song count)")+
+  theme_minimal()
+```
+
+
+```{r}
+topAllTime %>%  
+  select(tracks, danceability, energy, tempo) %>% 
+  mutate(danceability = scale(danceability), energy = scale(energy), tempo = scale(tempo)) %>% 
+  gather(-tracks, key = "stat", value = "value") %>% 
+  ggplot(aes(x = value, color = stat))+
+  geom_density()+
+  labs(title = "Distribution of song tempo", x = "Tempo (BPM)", y = "Density (song count)")+
+  theme_minimal()
+```
+
+```{r}
+topAllTime %>%
+  ggplot(aes(x = tempo, y = danceability))+
+  geom_point(aes(color= rank))+
+  geom_smooth(method = "loess")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
