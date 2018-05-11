@@ -6,6 +6,7 @@ output:
   pdf_document:
     latex_engine: xelatex
   html_document: default
+  word_document: default
 ---
 
 
@@ -43,19 +44,52 @@ t1 <- topAllTime %>%
   head(n = 20)
 
 topAllTime %>%
+  group_by(artist) %>% 
+  summarise(numberOfSongs = n()) %>% 
+  arrange(desc(numberOfSongs)) %>% 
+  head(n = 5) %>% 
+  summarise(sum = sum(numberOfSongs))
+
+
+topAllTime %>%
   group_by(artist) %>%
   summarise(avg_pos = (mean(rank)/(n()^2))) %>% 
   arrange(avg_pos)
 
 t2 <- topAllTime %>% 
-  group_by(factor(time_signature)) %>% 
-  summarise(numTracks = n())
+  select(tracks, artist, rank) %>% 
+  arrange(rank) %>% 
+  head(n = 20)
+
+t3 <- topAllTime %>%
+  group_by(mode) %>% 
+  summarise(numTracks = n()) %>% 
+  arrange(desc(numTracks))
 
 topAllTime %>% 
   filter(time_signature == 5)
 
 topAllTime %>% 
   filter(time_signature == 3)
+
+contPreds <- c(9,10,12,14,15,16,17,18)
+clusters <- kmeans(topAllTime[contPreds], 10)
+
+clusters$cluster
+
+topAllTime <- topAllTime %>% 
+  mutate(cluster = clusters$cluster)
+
+saveRDS(topAllTime, "data/topAllTime.rds")
+
+smaller <- select(topAllTime, tracks, artist, cluster)
+
+topAllTime %>% 
+  filter(tempo < 89 | tempo > 125)
+
+topAllTime %>% 
+  filter(duration_ms < 180000) %>% 
+  nrow()
 ```
 
 ```{r echo=FALSE, results='asis'}
@@ -69,6 +103,13 @@ print(tab)
 library(xtable)
 options(xtable.comment = FALSE)
 tab <- xtable(t2, floating=FALSE)
+print(tab)
+```
+
+```{r echo=FALSE, results='asis'}
+library(xtable)
+options(xtable.comment = FALSE)
+tab <- xtable(t3, floating=FALSE)
 print(tab)
 ```
 
@@ -104,10 +145,28 @@ topAllTime %>%
 
 ```{r}
 topAllTime %>%
-  ggplot(aes(x = tempo, y = danceability))+
-  geom_point(aes(color= rank))+
+  ggplot(aes(x = valence, y = rank))+
+  geom_point()+
   geom_smooth(method = "loess")
+
+topAllTime %>%
+  filter(duration_ms > 400000)
+
+topAllTime %>% 
+  group_by(mode) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n))
+
+topAllTime %>% 
+  group_by(key) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n))
 ```
+
+
+
+
+
 
 
 
